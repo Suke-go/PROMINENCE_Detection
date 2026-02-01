@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Prominence Detection Demo</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>🎤 Prominence Detection</h1>
+        <p class="subtitle">リアルタイム音節プロミネンス検出デモ</p>
+
+        <button id="startBtn">▶ マイクを開始</button>
+
+        <div style="margin-top: 1rem; display: none;" id="controlPanel">
+            <button id="calibrateBtn" class="btn-secondary">🔄 再キャリブ</button>
+            <label class="checkbox-label">
+                <input type="checkbox" id="soundToggle" checked>
+                🔊 150Hz音フィードバック
+            </label>
+        </div>
+
+        <div style="margin-top: 0.5rem;">
+            <label class="checkbox-label">
+                <input type="checkbox" id="wasmToggle">
+                ⚡ Wasm版を使用 (高速・6特徴量)
+            </label>
+        </div>
+
+        <div class="indicator" id="indicator">
+            <span class="indicator-text" id="indicatorText">待機中</span>
+        </div>
+
+        <div class="status" id="status">マイクボタンをクリックして開始</div>
+
+        <div id="noiseFloorDisplay" class="noise-floor-display">
+            ノイズフロア: E:<span id="nfEnergy">-</span> F:<span id="nfFlux">-</span> HF:<span id="nfHf">-</span>
+        </div>
+
+        <div class="metrics" id="metrics" style="display: none;">
+            <div class="metric">
+                <div class="metric-label">エネルギー</div>
+                <div class="metric-value" id="energyValue">0.00</div>
+                <div class="meter">
+                    <div class="meter-fill" id="energyMeter" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">Spectral Flux</div>
+                <div class="metric-value" id="fluxValue">0.00</div>
+                <div class="meter">
+                    <div class="meter-fill" id="fluxMeter" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">High Freq</div>
+                <div class="metric-value" id="hfValue">0.00</div>
+                <div class="meter">
+                    <div class="meter-fill" id="hfMeter" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">検出数</div>
+                <div class="metric-value" id="countValue">0</div>
+            </div>
+        </div>
+
+        <div class="event-log" id="eventLog" style="display: none;">
+            <div class="event-item" style="color: #888">イベントログ</div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/syllable.js"></script>
+    <script src="js/prominence-detector.js"></script>
+    <script src="js/prominence-detector-wasm.js"></script>
+    <script src="js/demo.js"></script>
+</body>
+
+</html>

@@ -482,6 +482,16 @@ SyllableConfig syllable_default_config(int sample_rate) {
   cfg.calibration_duration_ms = 2000.0f;
   cfg.snr_threshold_db = 6.0f;
 
+  // Hierarchical Prominence defaults (NEW)
+  // Duration as continuous feature (Fry 1955)
+  cfg.duration_weight = 0.1f;     // Weight from Python optimization
+  cfg.duration_center_ms = 80.0f; // Optimal center from sweep
+  cfg.duration_scale_ms = 30.0f;  // Sigmoid steepness
+
+  // Pause-based phrase detection
+  cfg.pause_threshold_ms = 200.0f;  // 200ms pause = phrase boundary
+  cfg.phrase_initial_boost = 0.15f; // Boost for phrase-initial syllables
+
   cfg.user_malloc = NULL;
   cfg.user_free = NULL;
 
@@ -628,13 +638,44 @@ static float calculate_prominence(SyllableDetector *d, int target_idx) {
     }
   }
 
+  // --- Hierarchical Prominence (NEW) ---
+  // 1. Duration as continuous feature (Fry 1955)
+  //    Formula: weight = sigmoid((duration_ms - center) / scale)
+  //    This smoothly modulates score based on syllable length
+  float duration_ms = target->event.duration_s * 1000.0f;
+  float dur_z = (duration_ms - d->config.duration_center_ms) /
+                d->config.duration_scale_ms;
+  float duration_sigmoid = 1.0f / (1.0f + expf(-dur_z));
+
+  // 2. Phrase-initial detection (based on pause before syllable)
+  //    If previous syllable is far away, this might be phrase-initial
+  //    NOTE: First syllable is NOT boosted (no context to compare)
+  float phrase_boost = 0.0f;
+  int prev_idx =
+      (target_idx - 1 + PROMINENCE_BUFFER_SIZE) % PROMINENCE_BUFFER_SIZE;
+  if (d->event_buffer[prev_idx].is_ready) {
+    float gap_ms = (target->event.time_seconds -
+                    d->event_buffer[prev_idx].event.time_seconds) *
+                       1000.0f -
+                   d->event_buffer[prev_idx].event.duration_s * 1000.0f;
+    if (gap_ms > d->config.pause_threshold_ms) {
+      phrase_boost = d->config.phrase_initial_boost;
+    }
+  }
+  // First syllable: no boost (removed to avoid false positives)
+
   // Combined score with enhanced duration weight and F0 level
   // Duration is the most dominant parameter for stress perception
-  float score = 0.10f * e_score + 0.10f * pr_score +
-                0.18f * d_score + // Duration weight
-                0.08f * slope_score + 0.18f * fusion_score_ratio +
-                0.13f * stress_ratio + 0.10f * (1.0f + f0_bonus) +
-                0.13f * (1.0f + f0_level_bonus); // NEW: F0 absolute level
+  float base_score = 0.10f * e_score + 0.10f * pr_score +
+                     0.18f * d_score + // Duration weight
+                     0.08f * slope_score + 0.18f * fusion_score_ratio +
+                     0.13f * stress_ratio + 0.10f * (1.0f + f0_bonus) +
+                     0.13f * (1.0f + f0_level_bonus); // F0 absolute level
+
+  // Apply duration modulation: score * (1 - w + w * sigmoid)
+  // This preserves score but modulates based on duration
+  float w = d->config.duration_weight;
+  float score = base_score * (1.0f - w + w * duration_sigmoid) + phrase_boost;
 
   return score;
 }

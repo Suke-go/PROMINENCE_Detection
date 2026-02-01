@@ -1,0 +1,213 @@
+/* ===========================================
+   Prominence Detection Demo - Stylesheet
+   =========================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0a0a0a;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.15s ease-out;
+}
+
+body.prominence-detected {
+    background: linear-gradient(135deg, #0a2a0a 0%, #1a4a1a 50%, #0a2a0a 100%);
+}
+
+body.prominence-high {
+    background: linear-gradient(135deg, #0a3a0a 0%, #2a6a2a 50%, #0a3a0a 100%);
+}
+
+/* Container */
+.container {
+    text-align: center;
+    padding: 2rem;
+}
+
+/* Typography */
+h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    background: linear-gradient(90deg, #4ade80, #22c55e);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.subtitle {
+    color: #888;
+    margin-bottom: 2rem;
+}
+
+/* Buttons */
+#startBtn {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white;
+    border: none;
+    padding: 1rem 3rem;
+    font-size: 1.2rem;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(34, 197, 94, 0.3);
+}
+
+#startBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 30px rgba(34, 197, 94, 0.4);
+}
+
+.btn-secondary {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-right: 0.5rem;
+}
+
+.btn-secondary:hover {
+    background: #2563eb;
+}
+
+.checkbox-label {
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Indicator */
+.indicator {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: #1a1a1a;
+    margin: 2rem auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.1s ease-out;
+    box-shadow: inset 0 0 30px rgba(0,0,0,0.5);
+}
+
+.indicator.active {
+    background: radial-gradient(circle, #4ade80 0%, #22c55e 50%, #16a34a 100%);
+    box-shadow: 0 0 60px rgba(74, 222, 128, 0.6),
+                inset 0 0 30px rgba(255,255,255,0.2);
+}
+
+.indicator.high {
+    background: radial-gradient(circle, #86efac 0%, #4ade80 50%, #22c55e 100%);
+    box-shadow: 0 0 100px rgba(74, 222, 128, 0.8),
+                inset 0 0 40px rgba(255,255,255,0.3);
+    transform: scale(1.1);
+}
+
+.indicator-text {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #666;
+    transition: color 0.1s;
+}
+
+.indicator.active .indicator-text,
+.indicator.high .indicator-text {
+    color: #fff;
+    text-shadow: 0 0 10px rgba(255,255,255,0.5);
+}
+
+/* Status */
+.status {
+    margin-top: 2rem;
+    font-size: 1.2rem;
+}
+
+.noise-floor-display {
+    display: none;
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: #888;
+}
+
+/* Metrics */
+.metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-top: 2rem;
+    max-width: 600px;
+}
+
+.metric {
+    background: rgba(255,255,255,0.05);
+    padding: 1rem;
+    border-radius: 10px;
+}
+
+.metric-label {
+    font-size: 0.8rem;
+    color: #888;
+    margin-bottom: 0.5rem;
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #4ade80;
+}
+
+.meter {
+    height: 4px;
+    background: #333;
+    border-radius: 2px;
+    margin-top: 0.5rem;
+    overflow: hidden;
+}
+
+.meter-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #22c55e, #4ade80);
+    transition: width 0.05s;
+}
+
+/* Event Log */
+.event-log {
+    margin-top: 2rem;
+    max-width: 600px;
+    max-height: 200px;
+    overflow-y: auto;
+    text-align: left;
+    background: rgba(0,0,0,0.3);
+    border-radius: 10px;
+    padding: 1rem;
+}
+
+.event-item {
+    padding: 0.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    font-family: monospace;
+    font-size: 0.9rem;
+}
+
+.event-item:last-child {
+    border-bottom: none;
+}
+
+.event-time {
+    color: #888;
+}
+
+.event-score {
+    color: #4ade80;
+    font-weight: bold;
+}

@@ -312,7 +312,205 @@ $$
 
 ---
 
-## 6. 参考文献
+## 7. リアルタイムモード (v5.0+)
+
+リアルタイムモードは、低レイテンシでの即時検出を目的とした新しい動作モード。オフラインモードとは異なるアルゴリズムを使用する。
+
+### 7.1 設計思想
+
+| 観点 | オフラインモード | リアルタイムモード |
+|------|-----------------|-------------------|
+| レイテンシ | 100-500ms | **< 20ms** |
+| コンテキスト | 前後2音節参照 | なし（因果処理） |
+| 閾値 | 適応的統計 | **オンラインキャリブレーション** |
+| Fusion | 重み付き平均 + Max | **幾何平均** |
+| 出力遅延 | `context_size` 待ち | **即時** |
+
+### 7.2 オンラインキャリブレーション
+
+開始時に $T_{\text{cal}}$（デフォルト2秒）間の環境ノイズを収集し、各特徴量のノイズフロアを推定。
+
+#### 7.2.1 特徴量ベクトル
+
+6つの特徴量を同時に収集:
+
+$$
+\mathbf{f} = \begin{bmatrix} E & P_R & S_F & H_F & M_\Delta & W \end{bmatrix}^\top
+$$
+
+| 記号 | 特徴量 | 役割 |
+|------|--------|------|
+| $E$ | Energy | 全体エネルギー |
+| $P_R$ | Peak Rate | 包絡線立ち上がり |
+| $S_F$ | Spectral Flux | スペクトル変化 |
+| $H_F$ | High-Freq Energy | 子音・破裂音 |
+| $M_\Delta$ | MFCC Delta | 音素境界 |
+| $W$ | Wavelet Score | マルチスケールトランジェント |
+
+#### 7.2.2 閾値計算
+
+キャリブレーション期間中に収集したサンプル $\{f_k^{(i)}\}_{i=1}^{N}$ から:
+
+$$
+\mu_k = \frac{1}{N} \sum_{i=1}^{N} f_k^{(i)}, \quad
+\sigma_k = \sqrt{\frac{1}{N} \sum_{i=1}^{N} (f_k^{(i)} - \mu_k)^2}
+$$
+
+**SNRベース閾値**:
+
+$$
+\theta_k = \mu_k + \gamma \cdot \sigma_k
+$$
+
+ここで SNR ゲイン係数:
+
+$$
+\gamma = 10^{\text{SNR}_{\text{dB}}/10}
+$$
+
+デフォルト $\text{SNR}_{\text{dB}} = 6.0$ で $\gamma \approx 4.0$
+
+#### 7.2.3 SNR 閾値の意味
+
+| SNR (dB) | γ | 感度 | 用途 |
+|----------|---|------|------|
+| -3 | 0.5 | 高 | 静かな環境 |
+| 0 | 1.0 | 中高 | 一般的 |
+| 3 | 2.0 | 中 | ノイズあり |
+| **6** | **4.0** | **中低** | **デフォルト** |
+| 10 | 10.0 | 低 | 高ノイズ環境 |
+
+### 7.3 幾何平均 Fusion
+
+単一特徴量のノイズスパイクに対してロバストなスコア計算。
+
+#### 7.3.1 閾値超過比
+
+各特徴量について:
+
+$$
+r_k = \frac{f_k}{\theta_k}
+$$
+
+**アクティブ特徴量**: $r_k > 1$ を満たすもの
+
+#### 7.3.2 幾何平均
+
+アクティブな $n$ 個の特徴量に対して:
+
+$$
+G = \exp\left(\frac{1}{n} \sum_{k \in \mathcal{A}} \ln r_k\right) = \sqrt[n]{\prod_{k \in \mathcal{A}} r_k}
+$$
+
+**特性**:
+- 算術平均より外れ値に鈍感
+- 全特徴量が閾値を超えないと高スコアにならない
+- $n=0$ のとき $S=0$（無検出）
+
+#### 7.3.3 有声ブースト
+
+ZFFによる有声判定を追加特徴として加算:
+
+$$
+v_c = \min\left(1, \frac{\text{voicing\_counter}}{5}\right)
+$$
+
+$v_c > 0.5$ の場合、$\ln(1 + v_c)$ を $\log\_sum$ に追加し $n$ をインクリメント。
+
+#### 7.3.4 シグモイド正規化
+
+幾何平均を $[0, 1]$ に圧縮:
+
+$$
+S = 1 - \frac{1}{1 + 0.5 \cdot G} = \frac{G}{2 + G}
+$$
+
+| $G$ | $S$ | 解釈 |
+|-----|-----|------|
+| 0 | 0 | 無検出 |
+| 2 | 0.50 | 中程度 |
+| 4 | 0.67 | 高 |
+| 10 | 0.83 | 非常に高 |
+
+### 7.4 エネルギーゲート
+
+ノイズによる誤検出を防ぐため、状態機械の入口に追加ゲートを設置。
+
+$$
+\text{gate} = \begin{cases}
+1 & \text{if } E > 3 \cdot \theta_E \land E > E_{\min} \\
+0 & \text{otherwise}
+\end{cases}
+$$
+
+- $\theta_E$: キャリブレーションで得たエネルギー閾値
+- $E_{\min} = 0.001$: 絶対最小エネルギー（約-60dB）
+- 乗数 $3.0$: ノイズフロアの3倍（約10dB SNR）
+
+### 7.5 状態機械の修正
+
+#### 7.5.1 即時イベント発行
+
+オフラインモードでは `context_size` 個のイベント蓄積後に発行するが、リアルタイムモードでは即時発行:
+
+$$
+\text{context\_needed} = \begin{cases}
+0 & \text{(realtime)} \\
+C & \text{(offline)}
+\end{cases}
+$$
+
+#### 7.5.2 F0 ゲートバイパス
+
+オフラインモードでは F0 上昇を検出条件に含むが、リアルタイムモードではバイパス:
+
+$$
+\text{f0\_allows} = \begin{cases}
+1 & \text{(realtime)} \\
+\text{f0\_has\_risen} \lor \text{strong\_evidence} \lor \text{enough\_time} & \text{(offline)}
+\end{cases}
+$$
+
+#### 7.5.3 Nucleus タイムアウト
+
+`STATE_NUCLEUS` での無限ループを防ぐため、最大滞在時間を設定:
+
+$$
+t_{\text{nucleus}} \leq 100\,\text{ms}
+$$
+
+超過時は強制的に `STATE_COOLDOWN` へ遷移しイベントを発行。
+
+### 7.6 重み設定
+
+現在の実装ではリアルタイムモードは幾何平均を使用するため、オフラインモードの重みとは異なるメカニズム。
+
+**オフラインモード重み** (Weighted Average + Max):
+
+| 特徴量 | 重み $w$ | 根拠 |
+|--------|----------|------|
+| Peak Rate | 0.30 | Oganian & Chang (2019): 音節符号化の主要ランドマーク |
+| Spectral Flux | 0.25 | 音素境界検出の標準手法 |
+| Wavelet | 0.20 | マルチスケール分解による過渡検出 |
+| High-Freq | 0.15 | 無声子音のバースト検出 |
+| MFCC Delta | 0.10 | 音色変化の補助 |
+| Voiced Bonus | 0.10 | 有声区間の強調 |
+
+**リアルタイムモード**: 幾何平均により暗黙的に等重み（各特徴が閾値を超えなければスコアに寄与しない）
+
+### 7.7 パラメータテーブル
+
+| パラメータ | デフォルト | 範囲 | 説明 |
+|-----------|-----------|------|------|
+| `calibration_duration_ms` | 2000 | 500-5000 | キャリブレーション期間 |
+| `snr_threshold_db` | 6.0 | -10 ~ 20 | SNR閾値 |
+| `min_syllable_dist_ms` | 150 | 50-500 | 最小音節間隔 |
+| Energy gate multiplier | 3.0 | 1.0-10.0 | エネルギーゲート乗数 |
+| Nucleus timeout | 100ms | 50-200 | 最大Nucleus滞在時間 |
+
+---
+
+## 8. 参考文献
 
 [1] Stevens, K. N. (1998). *Acoustic Phonetics*. MIT Press.
 
@@ -329,3 +527,7 @@ $$
 [7] Schmitt, O. H. (1938). A thermionic trigger. *Journal of Scientific Instruments*, 15(1), 24.
 
 [8] Fry, D. B. (1958). Experiments in the perception of stress. *Language and Speech*, 1(2), 126-152.
+
+[9] Bello, J. P., et al. (2005). A tutorial on onset detection in music signals. *IEEE Transactions on Speech and Audio Processing*, 13(5), 1035-1047.
+
+[10] Kalinli, O., & Narayanan, S. (2007). Prominence detection using auditory attention cues and task-dependent high level information. *IEEE Transactions on Audio, Speech, and Language Processing*, 17(5), 1009-1024.

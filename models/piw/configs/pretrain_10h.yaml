@@ -1,0 +1,27 @@
+# Pretraining Configuration - 10 hours
+# Main pretraining configuration
+
+defaults:
+  - base
+
+experiment:
+  name: pretrain_10h
+  description: "Pretraining on 10h LibriSpeech subset"
+
+data:
+  dataset: librispeech
+  subset: train-clean-100
+  max_hours: 10.0
+
+training:
+  max_steps: 50000
+  warmup_steps: 2000
+  batch_size: 8
+  gradient_accumulation: 8  # Larger effective batch
+  
+  save_every_n_steps: 5000
+  eval_every_n_steps: 1000
+
+model:
+  pretraining: true
+  finetuning: false

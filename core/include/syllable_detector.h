@@ -88,6 +88,17 @@ typedef struct {
   float calibration_duration_ms; // Calibration duration in ms (default: 2000.0)
   float snr_threshold_db;        // SNR threshold in dB (default: 6.0)
 
+  // --- Hierarchical Prominence (NEW) ---
+  // Duration as continuous feature (Fry 1955)
+  float duration_weight;    // Weight for duration modulation (default: 0.1)
+  float duration_center_ms; // Center point for sigmoid (default: 80.0)
+  float duration_scale_ms;  // Scale for sigmoid steepness (default: 30.0)
+
+  // Pause-based phrase detection
+  float pause_threshold_ms;   // Silence duration to detect phrase boundary
+                              // (default: 200.0)
+  float phrase_initial_boost; // Boost for post-pause syllables (default: 0.15)
+
   // User Memory (Optional, set to NULL to use malloc/free)
   void *(*user_malloc)(size_t);
   void (*user_free)(void *);

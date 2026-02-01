@@ -1,0 +1,59 @@
+# PIW Base Configuration
+# 6-layer Transformer for Blackwell GPU
+
+model:
+  frontend_dim: 768
+  sample_rate: 16000
+  stride: 160  # 10ms hop
+  
+  # Frontend branches
+  n_f0_filters: 32
+  n_harmonics: 8
+  n_spectral_filters: 64
+  n_am_filters: 8
+  
+  # Encoder (6-layer Small)
+  encoder_layers: 6
+  encoder_heads: 8
+  encoder_ff_dim: 3072
+  
+  dropout: 0.1
+
+training:
+  batch_size: 8
+  gradient_accumulation: 4  # Effective batch = 32
+  learning_rate: 5.0e-4
+  weight_decay: 0.01
+  warmup_steps: 1000
+  max_steps: 50000
+  
+  # Mixed precision
+  fp16: true
+  
+  # Optimizer
+  optimizer: adamw
+  adam_beta1: 0.9
+  adam_beta2: 0.98
+  adam_epsilon: 1.0e-6
+  
+  # Scheduler
+  scheduler: cosine
+  
+  # Masking
+  mask_prob: 0.065
+  mask_length: 10
+  min_masks: 2
+
+data:
+  sample_rate: 16000
+  max_audio_length: 10.0  # seconds
+  min_audio_length: 1.0
+
+logging:
+  log_every_n_steps: 100
+  save_every_n_steps: 5000
+  eval_every_n_steps: 1000
+  
+  # Weights & Biases
+  wandb_project: "piw"
+  wandb_run_name: null  # Auto-generate

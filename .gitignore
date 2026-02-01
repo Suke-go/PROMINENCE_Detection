@@ -9,6 +9,7 @@ dist/
 # IDE
 .vs/
 .vscode/
+.idea/
 *.user
 *.suo
 *.sln.docstates
@@ -38,16 +39,35 @@ __pycache__/
 *.pyc
 *.pyo
 .pytest_cache/
+.venv/
+venv/
+*.egg-info/
 
-# Test outputs
+# PyTorch / ML
+*.pt
+*.pth
+*.ckpt
+wandb/
+outputs/
+checkpoints/
+
+# Audio files (large)
 *.wav
-!test_input.wav
+*.mp3
+*.flac
+!demos/web/test_audio.wav
+
+# Evaluation data (large)
+evaluation/data/
+evaluation/models/
+experiments/evaluation/
+experiments/helsinki_prosody/
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Emscripten SDK (external dependency, install separately)
+# Emscripten SDK
 emsdk/
 emsdk_clean/
 
@@ -55,9 +75,6 @@ emsdk_clean/
 wasm_build/
 **/wasm_build/
 
-# Wasm files (except web demo distribution)
-*.wasm
-!experiments/realtime_prominence/web_demo/js/*.wasm
-
-# Wasm JS glue (except web demo distribution)  
-!experiments/realtime_prominence/web_demo/js/syllable.js
+# Keep demo wasm files
+!demos/web/*.wasm
+!demos/web/*.js

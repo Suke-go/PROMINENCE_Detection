@@ -1,0 +1,39 @@
+# Fine-tuning Configuration - Prominence Detection
+# Uses pretrained model for prominence classification
+
+defaults:
+  - base
+
+experiment:
+  name: finetune_prominence
+  description: "Fine-tuning for prominence detection"
+
+data:
+  dataset: helsinki_prosody
+  # Or: boston_radio_news
+  
+training:
+  max_epochs: 50
+  learning_rate: 1.0e-4
+  weight_decay: 0.01
+  warmup_steps: 500
+  
+  batch_size: 16
+  gradient_accumulation: 2
+  
+  # Freeze frontend initially
+  freeze_frontend_steps: 10000
+  
+  save_every_n_steps: 1000
+  eval_every_n_steps: 500
+
+model:
+  pretraining: false
+  finetuning: true
+  
+  # Load pretrained weights
+  pretrained_path: null  # Set via command line
+
+head:
+  label_smoothing: 0.1
+  dropout: 0.1
